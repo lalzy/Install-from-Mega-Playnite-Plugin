@@ -1,0 +1,12 @@
+Id: 320f8637-3660-4e98-87d0-fd12934b145a
+Name: Install From Mega
+Author: S.K.N The Lisper
+Version: 1.0.0
+Module: InstallFromMega.dll
+Type: GenericPlugin
+Links:
+  - Name: GitHub
+    Url: ''
+UpdaterConfig:
+  GitHubUser: erri120
+  GitHubRepo: Playnite.Extensions

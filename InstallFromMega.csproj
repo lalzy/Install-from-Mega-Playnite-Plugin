@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+<ItemGroup>
+  <Reference Include="Playnite.SDK">
+    <HintPath>$(PlayniteDir)\Playnite.SDK.dll</HintPath>
+  </Reference>
+  <Reference Include="PresentationFramework" />
+  <Reference Include="mscorlib" />
+</ItemGroup>
+</Project>
