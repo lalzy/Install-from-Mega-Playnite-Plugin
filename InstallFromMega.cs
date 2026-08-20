@@ -5,11 +5,15 @@ using System;
 
 namespace InstallFromMegaPlugin{
     public class InstallFromMega : GenericPlugin{
-        public override Guid Id { get; } = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        public override Guid Id { get; } = Guid.Parse("320f8637-3660-4e98-87d0-fd12934b145a");
+        private GameStatsManager _gameStatsManger;
 
-        public InstallFromMega(IPlayniteAPI api) : base(api){}
+        public InstallFromMega(IPlayniteAPI api) : base(api){
+            _gameStatsManger = new GameStatsManager(this);
+        }
 
         public override IEnumerable<InstallController> GetInstallActions(GetInstallActionsArgs args){
+            
             yield return new MegaInstallController(args.Game, PlayniteApi);
         }
     }
