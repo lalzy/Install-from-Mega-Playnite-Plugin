@@ -10,6 +10,8 @@ namespace InstallFromMegaPlugin{
         private GameStatsManager _gameStatsManger;
 
         public InstallFromMega(IPlayniteAPI api) : base(api){
+            Config.Init(GetPluginUserDataPath());
+            Config.CreateBlankConfigFile();
             _gameStatsManger = new GameStatsManager(this, api);
         }
 
