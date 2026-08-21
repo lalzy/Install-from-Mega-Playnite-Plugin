@@ -1,5 +1,6 @@
 using Playnite.SDK;
 using Playnite.SDK.Data;
+using Playnite.SDK.Models;
 using Playnite.SDK.Plugins;
 using System.IO;
 using System.Collections.Generic;
@@ -9,42 +10,87 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 
+
 namespace InstallFromMegaPlugin
 {
     public class GameStatsManager
     {
+        private IPlayniteAPI _api;
         private string _connection;
         private static readonly System.Reflection.PropertyInfo[] _properties = typeof(GameStats).GetProperties();
-        
-        public GameStatsManager(Plugin plugin)
+
+        public GameStatsManager(Plugin plugin, IPlayniteAPI api)
         {
+            _api = api;
             var dbPath = Path.Combine(plugin.GetPluginUserDataPath(), "plugin.db");
             _connection = $"Data Source={dbPath};Version=3;";
-
-            using (var connection = new SQLiteConnection(_connection))
+            WithSQLiteCommand((command) =>
             {
-                connection.Open();
-                var command = connection.CreateCommand();
                 CreateTable(command);
                 SetupColums(command);
-            }
+            }, "Error initializing GameStatsManager");
         }
 
-        /// <summary>Helper to convert from C# type to SQLite type</summary>
+        private string CreateErrorString(string error, Exception e){
+            return $"======\n{error}:\n{e}\n=======";
+        }
+        
+        private void WithTryCatch(Action action, string error="Error"){
+            try{
+                action();
+            }catch (Exception e){
+                Console.WriteLine(CreateErrorString(error, e));
+            }
+        }
+        
+        private void WithSQLiteCommand(Action<SQLiteCommand> action, string commandText=null, string error=null){
+            WithTryCatch(() => {
+                using(var connection = new SQLiteConnection(_connection)){
+                    connection.Open();
+                    using(var command = connection.CreateCommand()){
+                        if(commandText != null) command.CommandText = commandText;
+                        action(command);
+                    }
+                }
+            }, error);
+        }
+
+        private T WithReturnsSQLiteCommand<T>(Func<SQLiteCommand, T> action, string commandText=null, string error=null){
+            try{
+                using(var connection = new SQLiteConnection(_connection)){
+                    connection.Open();
+                    using(var command = connection.CreateCommand()){
+                        if(commandText != null) command.CommandText = commandText;
+                        return action(command);
+                    }
+                }
+            }catch(Exception e){
+                Console.WriteLine(CreateErrorString(error, e));
+                return default;
+            }
+        }
+        
         private string GetSQLiteType(Type type){
-            switch(type.Name){
-                case "Boolean":
-                case "UInt64":
-                case "Int32":
-                    return "INTEGER";
-                case "Double":
-                case "Single":
-                    return "REAL";
-                default:
-                    return "TEXT";
-            }
+            if (type == typeof(Guid)) return "TEXT";
+            if (type == typeof(bool)) return "INTEGER";
+            if (type == typeof(ulong)) return "INTEGER";
+            return "TEXT";
         }
+        
+        private HashSet<Guid> GetGuidHashSet(){
+            var GuidSet = new HashSet<Guid>();
 
+            WithSQLiteCommand((command) => {
+                using(var reader = command.ExecuteReader()){
+                    while(reader.Read()){
+                        GuidSet.Add(reader.GetGuid(0));
+                    }
+                }
+            }, $"SELECT {nameof(GameStats.GameID)} FROM {nameof(GameStats)}", "Error fetching Guids");
+
+            return GuidSet;
+        }
+        
         /// <summary>Create the GameStats table, with ID column if it doesn't exist</summary>
         private void CreateTable(SQLiteCommand command){
             command.CommandText = $"CREATE TABLE IF NOT EXISTS {nameof(GameStats)} ({nameof(GameStats.GameID)} TEXT PRIMARY KEY)";
@@ -99,54 +145,97 @@ namespace InstallFromMegaPlugin
         }
         
         /// <summary>Helper to create a gamestats object from the database entry</summary>
-        private GameStats CreateGameStatsObject(SQLiteDataReader reader){
+        private GameStats CreateGameStatsObject(Dictionary<string, object> values){
             var result = new GameStats();
             foreach(var property in _properties){
-                var value = reader[property.Name];
-                if(value == DBNull.Value) continue;
-                property.SetValue(result, ConvertToCSharpType(property.PropertyType, value));
+                if(values[property.Name] == DBNull.Value) continue;
+                property.SetValue(result, ConvertToCSharpType(property.PropertyType, values[property.Name]));
             }
             return result;
         }
         
+        private void UpdatePlayniteObject(Playnite.SDK.Models.Game game, GameStats stats){
+            if(stats == null)  stats = Write(new GameStats { GameID = game.Id, IsInstalled = false, Playtime = 0 });
+         
+            game.IsInstalled = stats.IsInstalled;
+            game.Playtime = stats.Playtime;
+            _api.Database.Games.Update(game);
+        }
+        
         /// <summary>Write current gamestats object to Database</summary>
         /// <returns></returns>
-        public void Write(GameStats gameStats)
+        public GameStats Write(GameStats gameStats)
         {
-            try{
-                using (var connection = new SQLiteConnection(_connection))
-                {
-                    connection.Open();
-                    InsertQuerry(connection.CreateCommand(), gameStats);
-                }
-            }catch(Exception e){
-                Console.WriteLine($"Error Writing to Database: {e}");
-            }
+            WithSQLiteCommand((command) => {
+            InsertQuerry(command, gameStats);
+            }, "Error writing to Database");
+            return gameStats;
         }
 
+        private Dictionary<string, object> convertReaderToObject(SQLiteDataReader reader){
+            var values = new Dictionary<string, object>();
+            for (int i = 0; i < reader.FieldCount; i++){
+                values[reader.GetName(i)] = reader.GetValue(i);
+            }
+            return values;
+        }
+        
         /// <summary>Read from the GameStats database</summary>
         /// <param name="gameID">The Database gameID</param>
         /// <returns>the GameStats object from the Database</returns>
         /// <throws> Generic pass-down exception</throws>
         public GameStats Read(Guid gameID)
         {
-            try{
-                using (var connection = new SQLiteConnection(_connection))
-                {
-                    connection.Open();
-                    var command = connection.CreateCommand();
-                    command.CommandText = CreateReadString();
-                    command.Parameters.AddWithValue($"@{nameof(GameStats.GameID)}", gameID.ToString());
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (!reader.Read()) return null;
-                        return CreateGameStatsObject(reader);
-                    }
+            return WithReturnsSQLiteCommand<GameStats>((SQLiteCommand command) => {
+                command.CommandText = CreateReadString();
+                command.Parameters.AddWithValue($"@{nameof(GameStats.GameID)}", gameID.ToString());
+                using(var reader = command.ExecuteReader()){
+                    if(!reader.Read()) return null;
+                    return CreateGameStatsObject(convertReaderToObject(reader));
+
                 }
-            }catch(Exception e){
-                Console.WriteLine($"Error Writing to Database: {e}");
-            }
-            return null;
+            }, "Error writing to Database");
+        }
+
+        ///<summary>Get all GameStats objects from the Database</summary>
+        ///<returns>All game objects as a dictionary with Guid as key</returns>
+        /// <throws> Generic pass-down exception</throws>
+        public Dictionary<Guid, GameStats> GetAllGameStats(){
+            return WithReturnsSQLiteCommand<Dictionary<Guid, GameStats>>((command) => {
+                command.CommandText = $"SELECT * FROM {nameof(GameStats)}";
+                using (var reader = command.ExecuteReader()){
+                    var map = new Dictionary<Guid, GameStats>();
+                    while(reader.Read()){
+                        var stats = CreateGameStatsObject(convertReaderToObject(reader));
+                        map[stats.GameID] = stats;
+                    }
+                    return map;
+                }
+            }, "Error during GetAllGameStats");
+        }
+        
+        /// <summary>Check if the GameStats database is empty or not (for initial run)</summary>
+        ///<returns>true if empty</returns>
+        /// <throws> Generic pass-down exception</throws>
+        public bool IsEmpty(){
+            return WithReturnsSQLiteCommand<bool>((command) => {
+                command.CommandText = $"SELECT EXISTS(SELECT 1 FROM {nameof(GameStats)})";
+                return (long)command.ExecuteScalar() == 0;
+            }, "error Checking If Empty");
+        }
+
+        /// <summary>Sync the playnite Games.db entries to our playtime entry</summary>
+        /// <throws> Generic pass-down exception</throws>
+        public void SyncGamesToGameStats(){
+            const string ERROR = "Error during syncing Games.DB to GameStats";
+            WithTryCatch(() =>
+            {
+                var gameStats = GetAllGameStats();
+                foreach(var game in _api.Database.Games){
+                    gameStats.TryGetValue(game.Id, out var stats);
+                    UpdatePlayniteObject(game, stats);
+                }
+            }, ERROR);
         }
     }
 }

@@ -6,7 +6,7 @@ Module: InstallFromMega.dll
 Type: GenericPlugin
 Links:
   - Name: GitHub
-    Url: ''
+    Url: 'https://github.com/lalzy/Install-from-Mega-Playnite-Plugin'
 UpdaterConfig:
-  GitHubUser: erri120
+  GitHubUser: Lalzy
   GitHubRepo: Playnite.Extensions
