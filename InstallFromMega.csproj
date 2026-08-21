@@ -4,12 +4,23 @@
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
+
   <ItemGroup>
     <Reference Include="Playnite.SDK">
       <HintPath>$(PlayniteDir)\Playnite.SDK.dll</HintPath>
+      <Private>false</Private>
     </Reference>
     <Reference Include="PresentationFramework" />
     <Reference Include="mscorlib" />
-    <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
+    <PackageReference Include="System.Data.SQLite" Version="1.0.118">
+    		      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="extension.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

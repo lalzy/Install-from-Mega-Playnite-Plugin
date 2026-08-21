@@ -156,7 +156,7 @@ namespace InstallFromMegaPlugin
         
         private void UpdatePlayniteObject(Playnite.SDK.Models.Game game, GameStats stats){
             if(stats == null)  stats = Write(new GameStats { GameID = game.Id, IsInstalled = false, Playtime = 0 });
-         
+            
             game.IsInstalled = stats.IsInstalled;
             game.Playtime = stats.Playtime;
             _api.Database.Games.Update(game);

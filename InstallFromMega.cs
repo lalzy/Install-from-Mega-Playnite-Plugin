@@ -1,4 +1,5 @@
 using Playnite.SDK;
+using Playnite.SDK.Events;
 using Playnite.SDK.Plugins;
 using System.Collections.Generic;
 using System;
@@ -10,9 +11,13 @@ namespace InstallFromMegaPlugin{
 
         public InstallFromMega(IPlayniteAPI api) : base(api){
             _gameStatsManger = new GameStatsManager(this, api);
-            if(_gameStatsManger.IsEmpty()) _gameStatsManger.SyncGamesToGameStats();
         }
 
+        public override void OnApplicationStarted(OnApplicationStartedEventArgs args){
+            if(_gameStatsManger.IsEmpty())
+                _gameStatsManger.SyncGamesToGameStats();
+        }
+        
         public override IEnumerable<InstallController> GetInstallActions(GetInstallActionsArgs args){
             
             yield return new MegaInstallController(args.Game, PlayniteApi);
