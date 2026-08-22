@@ -1,12 +1,16 @@
 using System.Linq;
 using System.IO;
 using System;
+using Playnite.SDK;
 
 namespace InstallFromMegaPlugin{
     public static class Config{
         private static string _configPath = "config.ini";
-        private const string LASTSYNC = "lastSync";
-        private const string MEGATOOLS = "megaToolspath";
+        public const string LASTSYNC = "lastSync";
+        public const string MEGATOOLS = "megaToolspath";
+        public const string MEGAGAMESURL = "megagames.dbpath";
+        public const string MEGALASTUPDATEURL = "lastupdatedurl";
+        public const string DOWNLOADPATH = "downloadPath";
 
         ///<summary>Initialize the static config path to be from pluginDataPath</summary>
         ///<param name="pluginDataPath">The Playnite Plugin Data Path</param>
@@ -15,14 +19,21 @@ namespace InstallFromMegaPlugin{
         }
 
         ///<summary>Create a blank config file if it doesn't exist.</summary>
-        public static void CreateBlankConfigFile(){
+        public static void CreateBlankConfigFile(IPlayniteAPI api){
             if(!File.Exists(_configPath)){
                 var configContent = new System.Text.StringBuilder();
-                string[] keys = { MEGATOOLS, LASTSYNC };
+                string[] keys = { MEGATOOLS, LASTSYNC, MEGAGAMESURL, MEGALASTUPDATEURL, DOWNLOADPATH};
 
                 foreach(var key in keys){
-                    configContent.Append(key).Append('=');
+                    string value = "";
+                    if (key == LASTSYNC){
+                        value = DateTime.Now.ToString();
+                    }else{
+                        value = api.Dialogs.SelectString($"Enter: {key} value", "Input", "").SelectedString;
+                    }
+                    configContent.Append(key).Append('=').Append(value).Append("\n");
                 }
+                File.WriteAllText(_configPath, configContent.ToString());
             };
         }
         
@@ -41,11 +52,6 @@ namespace InstallFromMegaPlugin{
             else
                 lines.Add($"{field}={value}");
             File.WriteAllLines(_configPath, lines);
-        }
-
-        ///<summary>Helper to get the megatoolspath</summary>
-        public static string GetMegaToolsPath(){
-            return Read(MEGATOOLS);
         }
 
         ///<summary>Helper to get last synced time</summary>

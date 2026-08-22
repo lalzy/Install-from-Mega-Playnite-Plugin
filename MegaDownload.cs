@@ -2,14 +2,34 @@ using System.IO;
 using System.Linq;
 using Playnite.SDK;
 using Playnite.SDK.Plugins;
+using System;
 
 namespace InstallFromMegaPlugin{
 
     public class MegaDownload {
-        private string toolPath;
+        private string _toolPath;
         public MegaDownload(IPlayniteAPI api){
-            var config = File.ReadAllLines("config.ini").Select(l => l.Split('=')).ToDictionary(a => a[0], a => a[1]);
-            toolPath =  api.Paths.ApplicationPath + config["megaToolspath"];
+            _toolPath = Config.Read(Config.MEGATOOLS);
+        }
+
+        public void Download(IPlayniteAPI api, string megaURL, string installPath, string gameName){
+            try{
+                var process = new System.Diagnostics.Process();
+                var downloadPath = Path.Combine(Config.Read(Config.DOWNLOADPATH), gameName);
+                Directory.CreateDirectory(downloadPath);
+
+                process.StartInfo.FileName = _toolPath;
+                process.StartInfo.Arguments = $"dl {megaURL} --path \"{downloadPath}\"";
+                process.Start();
+                process.WaitForExit();
+
+                var zip = Directory.GetFiles(downloadPath)[0];
+                System.IO.Compression.ZipFile.ExtractToDirectory(zip, installPath);
+                File.Delete(zip);
+                Directory.Delete(downloadPath);
+            }catch(Exception e){
+                api.Dialogs.ShowMessage(e.ToString());
+            }
         }
     }
 }
