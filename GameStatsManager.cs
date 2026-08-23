@@ -145,6 +145,7 @@ namespace InstallFromMegaPlugin
             
             game.IsInstalled = stats.IsInstalled;
             game.Playtime = stats.Playtime;
+            game.Version = stats.Version;
             _api.Database.Games.Update(game);
         }
         
