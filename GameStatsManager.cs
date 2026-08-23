@@ -30,21 +30,9 @@ namespace InstallFromMegaPlugin
                 SetupColums(command);
             }, "Error initializing GameStatsManager");
         }
-
-        private string CreateErrorString(string error, Exception e){
-            return $"======\n{error}:\n{e}\n=======";
-        }
-        
-        private void WithTryCatch(Action action, string error="Error"){
-            try{
-                action();
-            }catch (Exception e){
-                Console.WriteLine(CreateErrorString(error, e));
-            }
-        }
         
         private void WithSQLiteCommand(Action<SQLiteCommand> action, string commandText=null, string error=null){
-            WithTryCatch(() => {
+            ErrorHandler.WithTryCatch(() => {
                 using(var connection = new SQLiteConnection(_connection)){
                     connection.Open();
                     using(var command = connection.CreateCommand()){
@@ -52,11 +40,11 @@ namespace InstallFromMegaPlugin
                         action(command);
                     }
                 }
-            }, error);
+            }, _api, error);
         }
 
         private T WithReturnsSQLiteCommand<T>(Func<SQLiteCommand, T> action, string commandText=null, string error=null){
-            try{
+            ErrorHandler.WithTryCatchReturn<T>(() => {
                 using(var connection = new SQLiteConnection(_connection)){
                     connection.Open();
                     using(var command = connection.CreateCommand()){
@@ -64,10 +52,8 @@ namespace InstallFromMegaPlugin
                         return action(command);
                     }
                 }
-            }catch(Exception e){
-                Console.WriteLine(CreateErrorString(error, e));
-                return default;
-            }
+            }, _api);
+            return default;
         }
         
         private string GetSQLiteType(Type type){
@@ -228,14 +214,14 @@ namespace InstallFromMegaPlugin
         /// <throws> Generic pass-down exception</throws>
         public void SyncGamesToGameStats(){
             const string ERROR = "Error during syncing Games.DB to GameStats";
-            WithTryCatch(() =>
+            ErrorHandler.WithTryCatch(() =>
             {
                 var gameStats = GetAllGameStats();
                 foreach(var game in _api.Database.Games){
                     gameStats.TryGetValue(game.Id, out var stats);
                     UpdatePlayniteObject(game, stats);
                 }
-            }, ERROR);
+            }, _api, ERROR);
         }
     }
 }
