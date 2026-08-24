@@ -25,8 +25,11 @@ namespace InstallFromMegaPlugin{
 
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args){
             if(_gameStatsManger.IsEmpty()){
+                _api.Dialogs.ShowMessage($"Syncing: {_api.Database.Games.Count} games");
                 _gameStatsManger.SyncGamesToGameStats();
-                if(HASDEPENDENCIES) _api.Dialogs.ShowMessage(DEPENDENCYMESSAGE);
+                var message = "Done syncing!";
+                message += HASDEPENDENCIES ? $"\n{DEPENDENCYMESSAGE}" : "";
+                _api.Dialogs.ShowMessage(message);
             }
         }
         

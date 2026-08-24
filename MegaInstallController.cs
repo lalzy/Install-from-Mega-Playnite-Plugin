@@ -12,46 +12,35 @@ namespace InstallFromMegaPlugin{
         private Game _game;
         private GameStatsManager _statsManager;
         private GameStats _stats;
+
         
         public MegaInstallController(Game game, IPlayniteAPI api, GameStatsManager statsManager) : base(game){
-            _api = api;
             _statsManager = statsManager;
-            _stats = _statsManager.Read(Guid.Parse(game.GameId));
+            _stats = _statsManager.Read(game.Id);
             _mega = new MegaDownload(api);
+            _api = api;
             _game = game;
             Name = "install from Mega";
         }
 
         ///<summary>Update the GameStats object and DB entry</summary>
-        private void UpdateStats(){
+        private void UpdateStats(string installPath){
             _stats.IsInstalled = true;
             _stats.Version = _game.Version;
+            _stats.InstallDirectory = installPath;
             _statsManager.Write(_stats);
-        }
-
-        ///<summary>Updatrs the PlayniteGame DBEntry</summary>
-        private void UpdateGame(){
-            _game.IsInstalled = true;
-            _api.Database.Games.Update(_game);
-        }
-
-        ///<summary>Wrapper for downloading game, and creating the install directory.</summary>
-        private void WithDownload(Action action){
-            var resolvedPath = _api.ExpandGameVariables(_game, _game.InstallDirectory);
-            Directory.CreateDirectory(resolvedPath);
-            _mega.Download(_api, _game.Links.FirstOrDefault(l => l.Name == "MEGA").Url, resolvedPath, _game.Name);
-            action();
-            InvokeOnInstalled(new GameInstalledEventArgs(new GameInstallationData{
-                InstallDirectory = resolvedPath
-            }));
         }
         
         // Hook override
         public override void Install(InstallActionArgs args){
-            WithDownload(() => {
-                UpdateGame();
-                UpdateStats();
-            });
+            string installPath = _api.Dialogs.SelectFolder(_api.ExpandGameVariables(_game, _game.InstallDirectory));
+            Directory.CreateDirectory(installPath);
+            _mega.Download(_api, _game.Links.FirstOrDefault(l => l.Name == "MEGA").Url, installPath, _game.Name);
+            UpdateStats(installPath);
+            _api.Database.Games.Update(_game);
+            InvokeOnInstalled(new GameInstalledEventArgs(new GameInstallationData{
+                InstallDirectory = installPath
+            }));
         }
     }
 }

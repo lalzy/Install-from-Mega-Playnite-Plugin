@@ -5,6 +5,7 @@ namespace InstallFromMegaPlugin {
         public Guid GameID { get; set; }
         public bool IsInstalled { get; set; }
         public ulong Playtime { get; set; }
+        public string InstallDirectory {get; set;}
         
         // Version is what version the game was installed with, if it missmatch the game on later sync
         // We warn the user about it.

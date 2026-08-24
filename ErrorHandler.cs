@@ -34,10 +34,10 @@ namespace InstallFromMegaPlugin{
             }catch (Exception e){
                 if(catchBlock != null) catchBlock();
                 api.Dialogs.ShowErrorMessage($"{errorMessage}: {e}");
+                return default;
             }finally{
                 if(finallyBlock != null) finallyBlock();
             }
-            return default;
         }
     }
 }

@@ -44,7 +44,7 @@ namespace InstallFromMegaPlugin
         }
 
         private T WithReturnsSQLiteCommand<T>(Func<SQLiteCommand, T> action, string commandText=null, string error=null){
-            ErrorHandler.WithTryCatchReturn<T>(() => {
+            return ErrorHandler.WithTryCatchReturn<T>(() => {
                 using(var connection = new SQLiteConnection(_connection)){
                     connection.Open();
                     using(var command = connection.CreateCommand()){
@@ -53,7 +53,6 @@ namespace InstallFromMegaPlugin
                     }
                 }
             }, _api);
-            return default;
         }
         
         private string GetSQLiteType(Type type){
@@ -114,10 +113,11 @@ namespace InstallFromMegaPlugin
             var values = new System.Text.StringBuilder();
             
             foreach(var property in _properties){
+                var value = property.PropertyType == typeof(Guid) ? property.GetValue(gameStats).ToString() : property.GetValue(gameStats);
                 var name = property.Name;
                 columns.Append(name).Append(", ");
                 values.Append($"@{name}").Append(", ");
-                command.Parameters.AddWithValue($"@{name}", property.GetValue(gameStats));
+                command.Parameters.AddWithValue("@" + name, value);
             }
 
             command.CommandText = $"INSERT OR REPLACE INTO {nameof(GameStats)} ({columns.ToString().TrimEnd(',', ' ')}) VALUES ({values.ToString().TrimEnd(',', ' ')})";
@@ -127,7 +127,9 @@ namespace InstallFromMegaPlugin
 
         /// <summary>Converts from SQLite to valid C# type</summary>
         private object ConvertToCSharpType(Type targetType, object value){
-            return targetType == typeof(ulong) ? (object)Convert.ToUInt64(value) : Convert.ChangeType(value, targetType);
+            if(targetType == typeof(Guid)) return Guid.Parse(value.ToString());
+            if(targetType == typeof(ulong)) return Convert.ToUInt64(value);
+            return Convert.ChangeType(value, targetType);
         }
         
         /// <summary>Helper to create a gamestats object from the database entry</summary>
@@ -145,9 +147,18 @@ namespace InstallFromMegaPlugin
             
             game.IsInstalled = stats.IsInstalled;
             game.Playtime = stats.Playtime;
+
+            // overwrite installDirectory if it already exists
+            if(stats.InstallDirectory != null){
+                game.InstallDirectory = stats.InstallDirectory;
+            }else{
+                game.InstallDirectory = null;
+            }
+            
             game.Version = stats.Version;
             _api.Database.Games.Update(game);
         }
+
         
         /// <summary>Write current gamestats object to Database</summary>
         /// <returns></returns>
@@ -178,10 +189,11 @@ namespace InstallFromMegaPlugin
                 command.Parameters.AddWithValue($"@{nameof(GameStats.GameID)}", gameID.ToString());
                 using(var reader = command.ExecuteReader()){
                     if(!reader.Read()) return null;
+                    
                     return CreateGameStatsObject(convertReaderToObject(reader));
 
                 }
-            }, "Error writing to Database");
+            }, "Error reading from Database");
         }
 
         ///<summary>Get all GameStats objects from the Database</summary>
