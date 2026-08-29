@@ -24,6 +24,38 @@ namespace InstallFromMegaPlugin{
             });
         }
 
+        private void GetMegaFolders(string megaURL){
+            var process = new System.Diagnostics.Process();
+            process.StartInfo.FileName = _toolPath;
+            process.StartInfo.Arguments = $"dl --choose-files {megaURL}";
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardError = true;
+            
+        }
+
+        private void CompareLocalToMega(string megaURL, string localFolder){
+            GetMegaFolders(megaURL);
+        }
+        
+        ///<summary>Use megatools to download from mega</summary>
+        public void DownloadProcess(string megaURL, string downloadPath){
+            var process = new System.Diagnostics.Process();
+
+            process.StartInfo.FileName = _toolPath;
+            process.StartInfo.Arguments =  $"dl {megaURL} --path \"{downloadPath}\"";
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardError = true;
+            process.Start();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            if(error != null){
+                throw new Exception(error);
+            }
+            else if(process.ExitCode != 0){
+                throw new Exception($"DOwnload failed with exit code: {process.ExitCode}");
+            }
+        }
+        
         ///<summary>Download a zip file from Mega</summary>
         ///<param name="api">Playnite API instance</param>
         ///<param name="megaURL">The Mega decrypt Link to the game's zip file</param>
@@ -32,13 +64,14 @@ namespace InstallFromMegaPlugin{
         public void Download(IPlayniteAPI api, string megaURL, string installPath, string gameName){
             var downloadPath = Path.Combine(Config.Read(Config.DOWNLOADPATH), gameName);
             WithDownloadedZip(() => {
-                var process = new System.Diagnostics.Process();
-                process.StartInfo.FileName = _toolPath;
-                process.StartInfo.Arguments = $"dl {megaURL} --path \"{downloadPath}\"";
-                process.Start();
-                process.WaitForExit();
-                if(process.ExitCode != 0) throw new Exception($"Download failed with exit code: {process.ExitCode}");
+                DownloadProcess(megaURL, downloadPath);
             }, api, downloadPath, installPath, gameName);
+        }
+
+        public void DownloadFolder(IPlayniteAPI api, string megaURL, string downloadPath){
+            
+            DownloadProcess(megaURL, downloadPath);
+
         }
     }
 }

@@ -10,6 +10,7 @@ namespace InstallFromMegaPlugin{
         public const string MEGATOOLS = "megaToolspath"; // Where the local MegaTools is setup
         public const string MEGALASTUPDATEURL = "lastupdatedurl"; // Link to where the last-sync file is. Need to contain a dateTime timestamp
         public const string LIBRARYPATH = "libraryurl"; // Link to where the playnite/library is on mega.nz
+        public const string DOWNLOADPATH = "downloadPath"; // Temporary location to download files to
 
         ///<summary>Initialize the static config path to be from pluginDataPath</summary>
         ///<param name="pluginDataPath">The Playnite Plugin Data Path</param>
@@ -21,7 +22,7 @@ namespace InstallFromMegaPlugin{
         public static void CreateBlankConfigFile(IPlayniteAPI api){
             if(!File.Exists(_configPath)){
                 var configContent = new System.Text.StringBuilder();
-                string[] keys = { MEGATOOLS, LASTSYNC, MEGALASTUPDATEURL, MEGALASTUPDATEURL, LIBRARYPATH};
+                string[] keys = { MEGATOOLS, LASTSYNC, DOWNLOADPATH, MEGALASTUPDATEURL, MEGALASTUPDATEURL, LIBRARYPATH};
 
                 foreach(var key in keys){
                     string value = "";
