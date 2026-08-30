@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/InstallFromMega/">
+    <Project Path="InstallFromMega/InstallFromMega.csproj" />
+  </Folder>
+  <Project Path="SyncProgram/SyncProgram.csproj" />
+</Solution>

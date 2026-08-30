@@ -3,6 +3,7 @@
     <TargetFramework>net462</TargetFramework>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
+    <OutputPath>$(MSBuildThisFileDirectory)..\bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
