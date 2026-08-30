@@ -1,30 +1,54 @@
 using System;
+using System.Collections.Generic;
 
 class Program{
-    public static string megaToolsPath;
-    public static string libraryPath;
-    public static string megaLibraryURL;
+    private const string LIBPATH = "megalibraryurl";
+    private const string MEGALIBURL = "localplaynitepath";
+    private const string TOOLPATH = "megatoolspath";
     
-    private static void ParseArgs(string[] args){
+    
+    private static Dictionary<string, string> ParseArgs(string[] args){
+        var ret = new Dictionary<string, string>();
+        
         for(int i = 0; i < args.Length; i++){
             switch(args[i].ToLower()){
                 case "--megalibraryurl":
-                    megaLibraryURL = args[++i];
+                    ret.Add(MEGALIBURL, args[++i]);
                     break;
                 case "--localplaynitepath":
-                    libraryPath = args[++i];
+                    ret.Add(LIBPATH, args[++i]);
                     break;
                 case "--megatoolspath":
-                    megaToolsPath = args[++i];
+                    ret.Add(TOOLPATH, args[++i]);
                     break;
             }
         }
+        return ret;
+    }
+
+    private static bool VerifyPaths(Dictionary<string, string> paths){
+        string message = "Is required parameter!";
+        bool allValid = true;
+        if(!paths.ContainsKey(LIBPATH)){
+            Console.WriteLine($"--{LIBPATH} - {message}");
+            allValid = false;
+        }
+        if(!paths.ContainsKey(TOOLPATH)){
+            Console.WriteLine($"--{TOOLPATH} - {message}");
+            allValid = false;
+        }
+        if(!paths.ContainsKey(MEGALIBURL)){
+            Console.WriteLine($"--{MEGALIBURL} - {message}");
+            allValid = false;
+        }
+        return allValid;
     }
     
     static void Main(string[] args){
-        ParseArgs(args);
-        if(megaToolsPath == null || libraryPath == null || megaLibraryURL == null)
-            throw new Exception("Error, --megalibraryurl, --localplaynitepath, and --megatoolspath is required parameters");
+        var paths = ParseArgs(args);
+        if (!VerifyPaths(paths)) throw new Exception("Required parameters not met!");
+        var lines = Sync.GetMegaFiles(paths[TOOLPATH], paths[MEGALIBURL]);
         
+        Console.WriteLine(lines);
     }
 }

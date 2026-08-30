@@ -1,8 +1,7 @@
-public class MegaEntry
+public class MegaFile
 {
-    public int Index;
-    public string Name;
-    public string ParentPath;
-    public bool IsFolder;
-    public long SizeBytes;
+    public string name;
+    public string path;
+    public long size;
+    public bool IsDirectory;
 }
