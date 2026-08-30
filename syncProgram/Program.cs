@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 class Program{
     private const string LIBPATH = "megalibraryurl";
@@ -45,10 +46,19 @@ class Program{
     }
     
     static void Main(string[] args){
-        var paths = ParseArgs(args);
-        if (!VerifyPaths(paths)) throw new Exception("Required parameters not met!");
-        var lines = Sync.GetMegaFiles(paths[TOOLPATH], paths[MEGALIBURL]);
-        
-        Console.WriteLine(lines);
+        try{
+            var paths = ParseArgs(args);
+            if (!VerifyPaths(paths)) throw new Exception("Required parameters not met!");
+            var lines = Sync.GetMegaFiles(paths[TOOLPATH], paths[MEGALIBURL]);
+            // var files = parseFromMega.ParseLines(lines);
+            var files = parseFromMega.ParseLines(lines.Take(50).ToArray());
+
+            // Temporary debugging
+            foreach(var file in files){
+                Console.WriteLine($"filename: {file.name} | path: {file.path} | is dir: {file.IsDirectory}");
+            }
+        }catch (Exception e){
+            Console.WriteLine(e);
+        }
     }
 }

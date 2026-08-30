@@ -43,7 +43,7 @@ public static class Sync{
     ///<param name="megaToolsPath">Local path to the MegaTools binary</param>
     ///<param name="megaLibraryURL">The Mega decrypted URL that holds the playnite library</param>
     ///<returns>string of files and folders</returns>
-    public static string GetMegaFiles(string megaToolsPath, string megaLibraryURL){
+    public static string[] GetMegaFiles(string megaToolsPath, string megaLibraryURL){
         Console.WriteLine("Fetching library data from mega");
         Console.WriteLine("======== Please wait ========");
 
@@ -54,6 +54,6 @@ public static class Sync{
         }, megaToolsPath, megaLibraryURL);
 
         Console.WriteLine("======== finished fetching ========");
-        return output;
+        return output.Split(new string[]{"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
     }
 }
