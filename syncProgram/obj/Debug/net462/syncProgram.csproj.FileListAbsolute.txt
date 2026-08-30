@@ -1,0 +1,11 @@
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.csproj.AssemblyReference.cache
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.GeneratedMSBuildEditorConfig.editorconfig
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.AssemblyInfoInputs.cache
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.AssemblyInfo.cs
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.csproj.CoreCompileInputs.cache
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.sourcelink.json
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\bin\Debug\net462\syncProgram.exe.config
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\bin\Debug\net462\syncProgram.exe
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\bin\Debug\net462\syncProgram.pdb
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.exe
+C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncprogram\obj\Debug\net462\syncProgram.pdb
