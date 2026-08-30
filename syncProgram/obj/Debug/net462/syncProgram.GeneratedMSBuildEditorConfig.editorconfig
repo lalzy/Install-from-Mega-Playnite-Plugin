@@ -1,8 +1,0 @@
-is_global = true
-build_property.RootNamespace = syncProgram
-build_property.ProjectDir = C:\coding-projects\C#-Projects\PlaynitePlugins\InstallFromMega\syncProgram\
-build_property.EnableComHosting = 
-build_property.EnableGeneratedComInterfaceComImportInterop = 
-build_property.CsWinRTUseWindowsUIXamlProjections = false
-build_property.EffectiveAnalysisLevelStyle = 
-build_property.EnableCodeStyleSeverity = 
