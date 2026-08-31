@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System;
 using System.Globalization;
+using System.Linq;
 
 public static class parseFromMega{
     static int GetDepth(string line){
@@ -20,6 +21,12 @@ public static class parseFromMega{
         else return trimmedLine.Substring(0, --endIndex);
     }
 
+    ///<summary>Return the line number</summary>
+    static long ExtractNumber (string line){
+        // Strip the first set of digits before the dot designator
+        return int.Parse(new string(line.Substring(0, line.IndexOf('.')).Where(char.IsDigit).ToArray()));
+    }
+    
     static long ExtractSize(string line){
         const int K = 1024;
         var start = line.LastIndexOf('(');
@@ -61,7 +68,8 @@ public static class parseFromMega{
             name = name,
             size = size,
             IsDirectory = (size == -1),
-            path = path
+            path = path,
+            LineNumber = ExtractNumber(line)
         });
         
         if(++index >= lines.Length) return result;
@@ -72,5 +80,17 @@ public static class parseFromMega{
     ///<returns>A list of MegaFiles</returns>
     public static List<MegaFile> ParseLines(string[] lines){
         return ParseLines(lines, 1, new Dictionary<int, string>(), new List<MegaFile>());
+    }
+
+    ///<summary>Convert a list of megafiles into a directory key'ed by it's path</summary>
+    ///<returns>The dictionary</returns>
+    public static Dictionary<string, MegaFile> ConvertToLookup(List<MegaFile> files){
+        Dictionary<string, MegaFile> output = new Dictionary<string, MegaFile>();
+        foreach(MegaFile file in files){
+            if(!file.IsDirectory){
+                output[file.path.TrimStart('/')] = file;
+            }
+        }
+        return output;
     }
 }

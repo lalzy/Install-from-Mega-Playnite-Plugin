@@ -56,4 +56,5 @@ public static class Sync{
         Console.WriteLine("======== finished fetching ========");
         return output.Split(new string[]{"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
     }
+
 }
