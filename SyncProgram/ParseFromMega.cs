@@ -13,6 +13,10 @@ public static class parseFromMega{
         }
         return depth;
     }
+
+    static string ExtractExtension(string name){
+        return name.Substring(name.LastIndexOf('.') + 1);
+    }
     
     static string ExtractName(string line){
         var trimmedLine = line.Substring(line.IndexOf('.') + 2);
@@ -69,7 +73,8 @@ public static class parseFromMega{
             size = size,
             IsDirectory = (size == -1),
             path = path,
-            LineNumber = ExtractNumber(line)
+            LineNumber = ExtractNumber(line),
+            extension = ExtractExtension(name)
         });
         
         if(++index >= lines.Length) return result;

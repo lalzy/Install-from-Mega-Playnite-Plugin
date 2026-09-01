@@ -5,56 +5,60 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 
-public static class Sync{
+public class Sync{
+    private string _megaToolPath;
+    private string _megaLibraryURL;
+    private string _localPath;
 
-    ///<summary>Read the lines from process output into a string</summary>
-    private static string ReadOutput(Process  process){
-        var output = new System.Text.StringBuilder();
-        
-        string line;
-        while((line = process.StandardOutput.ReadLine()) != null){
-            // The first non-file line of the interactive prompt is where we stop reading
-            if(line.Contains("Enter numbers of files or folders to download separated by spaces"))
-                break;
-            output.AppendLine(line);
-        }
-
-        return output.ToString();
+    public Sync(string megaToolPath, string megaLibraryURL, string localPath){
+        _megaToolPath = megaToolPath;
+        _megaLibraryURL = megaLibraryURL;
+        _localPath = localPath;
     }
-
-    ///<summary>Wrapper over process that will force close the process after func runs</summary>
-    private static void WithProcess(Action<Process> func, string megaToolsPath, string megaLibraryURL){
+    
+    private bool EndOfFileRead(string line){
+        return line.Contains("Enter numbers of files or folders to download separated by spaces");
+    }
+    
+    private void WithCMDProcess(string argument, Action<Process> func){
         var process = new Process();
-        process.StartInfo.FileName = megaToolsPath;
-        process.StartInfo.Arguments = $"dl --choose-files {megaLibraryURL}";
+        process.StartInfo.FileName = "cmd.exe";
+        process.StartInfo.Arguments = argument;
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
         process.StartInfo.RedirectStandardInput = true;
+
         process.Start();
-        
-        func(process);;
-
-        process.Kill();
-        process.WaitForExit();
+        func(process);
     }
 
-    ///<summary>Read all files from a MegaURL, meant to get playnite's library/ to check what needs to be downloaded</summary>
-    ///<param name="megaToolsPath">Local path to the MegaTools binary</param>
-    ///<param name="megaLibraryURL">The Mega decrypted URL that holds the playnite library</param>
-    ///<returns>string of files and folders</returns>
-    public static string[] GetMegaFiles(string megaToolsPath, string megaLibraryURL){
-        Console.WriteLine("Fetching library data from mega");
-        Console.WriteLine("======== Please wait ========");
+    private void FilterOutput(Process process){
+        string line;
+        while((line = process.StandardOutput.ReadLine()) != null)
+            if(EndOfFileRead(line)) break;
+        while((line = process.StandardOutput.ReadLine()) != null)
+            Console.WriteLine(line);
+    }
+    
 
-        string output = "";
-        WithProcess((process) =>
-        {
-            output = ReadOutput(process);
-        }, megaToolsPath, megaLibraryURL);
-
-        Console.WriteLine("======== finished fetching ========");
-        return output.Split(new string[]{"\r\n", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+    private void DownloadFiles(){
+        WithCMDProcess( $"/C {_megaToolPath} dl --path {_localPath} --choose-files {_megaLibraryURL}", (process)=>{
+            process.StandardInput.WriteLine("1");
+            process.StandardInput.Flush();
+            process.StandardInput.Close();
+            FilterOutput(process);
+        });
     }
 
+    public void RunSync(){
+        string root = _localPath + "/library/";
+
+        // Delete the databases as MegaTools can't overwrite existing files
+        foreach (string file in Directory.GetFiles(root, "*.db").Concat(Directory.GetFiles(root, "database.json"))){
+            File.Delete(file);
+        }
+
+        DownloadFiles();
+
+    }
 }

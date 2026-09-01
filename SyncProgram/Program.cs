@@ -44,39 +44,16 @@ class Program{
             allValid = false;
         }
         return allValid;
-    }
+    } 
 
     static void Main(string[] args){
         try{
             var paths = ParseArgs(args);
             if (!VerifyPaths(paths)) throw new Exception("Required parameters not met!");
-            var lines = Sync.GetMegaFiles(paths[TOOLPATH], paths[MEGALIBURL]);
-            // var files = parseFromMega.ParseLines(lines);
 
-            
-            var megaFiles = parseFromMega.ConvertToLookup(parseFromMega.ParseLines(lines.Take(50).ToArray()));
-
-            string root = paths[PLAYNITEPATH] + "/library/";
-
-
-            Dictionary<string, string> localFiles = new Dictionary<string, string>();
-            foreach (string file in Directory.GetFiles(root, "*.*", System.IO.SearchOption.AllDirectories))
-            {
-                string relative = file.Substring(root.Length);
-                localFiles[relative] = file;
-            }
-
-            foreach(var key in megaFiles.Keys){
-                if(!localFiles.ContainsKey(key)){
-                    Console.WriteLine("Missing: " + megaFiles[key].LineNumber);
-                    break;
-                }
-            }
-            
-            // Temporary debugging
-            // foreach(var file in files){
-            //     Console.WriteLine($"filename: {file.name} | path: {file.path} | is dir: {file.IsDirectory}");
-            // }
+            Console.WriteLine("=== running sync; please wait =====");
+            new Sync(paths[TOOLPATH], paths[MEGALIBURL], paths[PLAYNITEPATH]).RunSync();
+            Console.WriteLine("======== finished fetching ========");
         }catch (Exception e){
             Console.WriteLine(e);
         }
