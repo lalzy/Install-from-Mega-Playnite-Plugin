@@ -8,7 +8,7 @@ class Program{
     private const string PLAYNITEPATH = "localplaynitepath";
     private const string TOOLPATH = "megatoolspath";
     
-    
+    ///<summary>parse the arguments to get the values</summary>
     private static Dictionary<string, string> ParseArgs(string[] args){
         var ret = new Dictionary<string, string>();
         
@@ -28,6 +28,7 @@ class Program{
         return ret;
     }
 
+    ///<summary>Verify that we have injected the 3 required parameters</summary>
     private static bool VerifyPaths(Dictionary<string, string> paths){
         string message = "Is required parameter!";
         bool allValid = true;

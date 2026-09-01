@@ -15,11 +15,13 @@ public class Sync{
         _megaLibraryURL = megaLibraryURL;
         _localPath = localPath;
     }
-    
+
+    ///<summary>Start of input designator</summary>
     private bool EndOfFileRead(string line){
         return line.Contains("Enter numbers of files or folders to download separated by spaces");
     }
-    
+
+    ///<summary>Runs process with CMD as middleman</summary>
     private void WithCMDProcess(string argument, Action<Process> func){
         var process = new Process();
         process.StartInfo.FileName = "cmd.exe";
@@ -32,17 +34,24 @@ public class Sync{
         func(process);
     }
 
+    ///<summary>Filter the console output so we only get download information</summary>
     private void FilterOutput(Process process){
         string line;
         while((line = process.StandardOutput.ReadLine()) != null)
             if(EndOfFileRead(line)) break;
-        while((line = process.StandardOutput.ReadLine()) != null)
-            Console.WriteLine(line);
+        while((line = process.StandardOutput.ReadLine()) != null){
+            if(line.Contains("File already exists at"))
+                Console.WriteLine("file exist, skipping");
+            else
+                Console.WriteLine(line);
+        }
     }
     
 
+    ///<summary>Downloads from Mega using a process</summary>
     private void DownloadFiles(){
-        WithCMDProcess( $"/C {_megaToolPath} dl --path {_localPath} --choose-files {_megaLibraryURL}", (process)=>{
+        // 2>&1 merges error and out streams into one
+        WithCMDProcess( $"/C {_megaToolPath} dl --path {_localPath} --choose-files {_megaLibraryURL}  2>&1", (process)=>{
             process.StandardInput.WriteLine("1");
             process.StandardInput.Flush();
             process.StandardInput.Close();
@@ -50,6 +59,7 @@ public class Sync{
         });
     }
 
+    ///<summary>Runs the sync logic. Delete's the .db files, and re-download them, and any missing files/ files/folders</summary>
     public void RunSync(){
         string root = _localPath + "/library/";
 
