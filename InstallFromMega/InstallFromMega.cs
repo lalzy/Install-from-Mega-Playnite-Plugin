@@ -6,6 +6,8 @@ using System;
 using System.Net;
 using System.IO;
 using System.Windows;
+using System.Reflection;
+using System.Diagnostics;
 
 namespace InstallFromMegaPlugin{
     public class InstallFromMega : GenericPlugin{
@@ -31,6 +33,7 @@ namespace InstallFromMegaPlugin{
         ///<summary>Check if we need to sync</summary>
         private bool NeedSyncP(){
             var client = new WebClient();
+            // read from the sync-file that owns SoT of library update time
             DateTime externalSyncDate = DateTime.Parse(client.DownloadString(Config.Read(Config.MEGALASTUPDATEURL)));
             if(externalSyncDate > DateTime.Parse(Config.Read(Config.LASTSYNC)))
                 return true;
@@ -38,38 +41,65 @@ namespace InstallFromMegaPlugin{
                 return false;
         }
 
+        ///<summary>Helper to fetch the library URL from server holding the link</summary>
+        private string GetMegaLibraryPath(){
+            var client = new WebClient();
+            return client.DownloadString(Config.Read(Config.LIBRARYPATH));
+        }
+
+        ///<summary>Helper to shut down playnite</summary>
+        private void ShutdownPlaynite(){
+            var shutdown = new Process();
+            shutdown.StartInfo.FileName = Path.Combine(PlayniteApi.Paths.ApplicationPath, "Playnite.DesktopApp.exe");
+            shutdown.StartInfo.Arguments = "--shutdown";
+            shutdown.Start();
+        }
+        
+        private void RunSyncProgram(string playnitePath, string configFilePath){
+            string arguments = $"--megalibraryurl {GetMegaLibraryPath()} --localplaynitepath {PlayniteApi.Paths.ApplicationPath} --megatoolspath {Config.Read(Config.MEGATOOLS)} --configfilepath {configFilePath} --syncfieldname {Config.LASTSYNC}";
+            var process = new Process();
+            process.StartInfo.FileName = Path.Combine(playnitePath, "syncProgram.exe");
+            process.StartInfo.Arguments = arguments;
+            process.Start();
+
+            // need to shutdown as playnite holds access-rights to database files
+            ShutdownPlaynite();
+        }
+        
         ///<summary>Syncs if we need to sync</summary>
-        private void HandleSync(){
+        private void HandleSync(string pluginPath, string configFilePath){
             ErrorHandler.WithTryCatch(()=>{
                 if(NeedSyncP()){
-                    var result = _api.Dialogs.ShowMessage("Sync available, want to sync(require restart)?", "Title", MessageBoxButton.YesNo);
+                    var result = _api.Dialogs.ShowMessage("Sync available, want to sync(Playnite will be shutdown while it syncs the library)?", "Title", MessageBoxButton.YesNo);
                     if(result == MessageBoxResult.Yes){
-                        string libraryPath = Path.Combine(_api.Paths.ApplicationPath, "library");
-                        var client = new WebClient();
-                        var megaLib = client.DownloadString(Config.Read(Config.LIBRARYPATH));
-                        _megaDownload.DownloadFolder(_api, megaLib, libraryPath // Config.Read(Config.DOWNLOADPATH)
-                        );
-
-                        Config.Write(Config.LASTSYNC, DateTime.Now.ToString());
-                        _api.Dialogs.ShowMessage($"Downloaded Synced files: {Config.DOWNLOADPATH} to your {libraryPath} folder");
+                        RunSyncProgram(pluginPath, configFilePath);
+                        
                     }
-                }    
+                }
             }, _api, "Error in Syncing");
         }
         
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args){
             if(_gameStatsManger.IsEmpty()){
-                _api.Dialogs.ShowMessage($"Syncing: {_api.Database.Games.Count} games");
+                _api.Dialogs.ShowMessage($"First time game-setup. Setting up for {_api.Database.Games.Count} games");
                 _gameStatsManger.SyncGamesToGameStats();
-                var message = "Done syncing!";
+                var message = "Done!";
                 message += HASDEPENDENCIES ? $"\n{DEPENDENCYMESSAGE}" : "";
                 _api.Dialogs.ShowMessage(message);
             }
-            HandleSync();
+            HandleSync(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath());
         }
         
         public override IEnumerable<InstallController> GetInstallActions(GetInstallActionsArgs args){
             yield return new MegaInstallController(args.Game, PlayniteApi, _gameStatsManger);
+        }
+
+        public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args){
+            yield return new MainMenuItem{
+                Description = "Sync Library from Mega",
+                MenuSection = "@",
+                Action = (a) => RunSyncProgram(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath())
+            };
         }
     }
 }

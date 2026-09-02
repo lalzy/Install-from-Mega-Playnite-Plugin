@@ -64,6 +64,7 @@ public class Sync{
         string root = _localPath + "/library/";
 
         // Delete the databases as MegaTools can't overwrite existing files
+        Console.WriteLine("Deleting Database files");
         foreach (string file in Directory.GetFiles(root, "*.db").Concat(Directory.GetFiles(root, "database.json"))){
             File.Delete(file);
         }

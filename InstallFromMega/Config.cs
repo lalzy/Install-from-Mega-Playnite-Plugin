@@ -5,7 +5,7 @@ using Playnite.SDK;
 
 namespace InstallFromMegaPlugin{
     public static class Config{
-        private static string _configPath = "config.ini";
+        public static string _configPath = "config.ini";
         public const string LASTSYNC = "lastSync"; // When the extension was last synced for the mega.nz library. If out of sync, a reminder will be thrown.
         public const string MEGATOOLS = "megaToolspath"; // Where the local MegaTools is setup
         public const string MEGALASTUPDATEURL = "lastupdatedurl"; // Link to where the last-sync file is. Need to contain a dateTime timestamp
@@ -18,6 +18,10 @@ namespace InstallFromMegaPlugin{
             _configPath = Path.Combine(pluginDataPath, "config.ini");
         }
 
+        public static string GetFullPath(){
+            return _configPath;
+        }
+        
         ///<summary>Create a blank config file if it doesn't exist.</summary>
         public static void CreateBlankConfigFile(IPlayniteAPI api){
             if(!File.Exists(_configPath)){
