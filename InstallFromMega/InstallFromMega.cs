@@ -8,6 +8,7 @@ using System.IO;
 using System.Windows;
 using System.Reflection;
 using System.Diagnostics;
+using Playnite.SDK.Models;
 
 namespace InstallFromMegaPlugin{
     public class InstallFromMega : GenericPlugin{
@@ -16,9 +17,8 @@ namespace InstallFromMegaPlugin{
         private const bool HASDEPENDENCIES = true;
         private const string DEPENDENCYMESSAGE = "Remember to install dependencies under [dependencies] platform!";
 
-    
         public override Guid Id { get; } = Guid.Parse("320f8637-3660-4e98-87d0-fd12934b145a");
-        private GameStatsManager _gameStatsManger;
+        private GameStatsManager _gameStatsManager;
         private IPlayniteAPI _api;
         public MegaDownload _megaDownload;
 
@@ -27,7 +27,7 @@ namespace InstallFromMegaPlugin{
             Config.Init(GetPluginUserDataPath());
             Config.CreateBlankConfigFile(api);
             _megaDownload = new MegaDownload(api);
-            _gameStatsManger = new GameStatsManager(this, api);
+            _gameStatsManager = new GameStatsManager(this, api);
         }
 
         ///<summary>Check if we need to sync</summary>
@@ -56,7 +56,7 @@ namespace InstallFromMegaPlugin{
         }
         
         private void RunSyncProgram(string playnitePath, string configFilePath){
-            string arguments = $"--megalibraryurl {GetMegaLibraryPath()} --localplaynitepath {PlayniteApi.Paths.ApplicationPath} --megatoolspath {Config.Read(Config.MEGATOOLS)} --configfilepath {configFilePath} --syncfieldname {Config.LASTSYNC}";
+            string arguments = $"--megalibraryurl {GetMegaLibraryPath()} --localplaynitepath {PlayniteApi.Paths.ApplicationPath} --megatoolspath {Config.Read(Config.MEGATOOLS)} --configfilepath {configFilePath} --syncfieldname {Config.LASTSYNC} --needmigratename {Config.NEEDMIGRATE}";
             var process = new Process();
             process.StartInfo.FileName = Path.Combine(playnitePath, "syncProgram.exe");
             process.StartInfo.Arguments = arguments;
@@ -80,20 +80,46 @@ namespace InstallFromMegaPlugin{
         }
         
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args){
-            if(_gameStatsManger.IsEmpty()){
+            
+            if(_gameStatsManager.IsEmpty()){
                 _api.Dialogs.ShowMessage($"First time game-setup. Setting up for {_api.Database.Games.Count} games");
-                _gameStatsManger.SyncGamesToGameStats();
+                _gameStatsManager.SyncGamesToGameStats();
                 var message = "Done!";
                 message += HASDEPENDENCIES ? $"\n{DEPENDENCYMESSAGE}" : "";
                 _api.Dialogs.ShowMessage(message);
             }
             HandleSync(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath());
+
+            bool.TryParse(Config.Read(Config.NEEDMIGRATE), out bool needMigrate);
+            if(needMigrate){
+                _gameStatsManager.SyncGamesToGameStats();
+                Config.Write(Config.NEEDMIGRATE, "false");
+            }
+            // To track if a game gets uninstalled
+            PlayniteApi.Database.Games.ItemUpdated += Games_ItemUpdated;
+    
         }
         
         public override IEnumerable<InstallController> GetInstallActions(GetInstallActionsArgs args){
-            yield return new MegaInstallController(args.Game, PlayniteApi, _gameStatsManger);
+            yield return new MegaInstallController(args.Game, PlayniteApi, _gameStatsManager);
         }
 
+        // To set the GameStats to uninstalled if we unflag installed
+        private void Games_ItemUpdated(object sender, ItemUpdatedEventArgs<Game> args)
+        {
+            foreach (var change in args.UpdatedItems)
+            {
+                if (change.OldData.IsInstalled && !change.NewData.IsInstalled)
+                {
+                    var stats = _gameStatsManager.Read(change.NewData.Id);
+                    stats.IsInstalled = false;
+                    _gameStatsManager.Write(stats);
+                    MegaInstallController.SetSharedUninstall(_api, change.NewData, _gameStatsManager);
+                }
+            }
+        }
+
+        
         public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args){
             yield return new MainMenuItem{
                 Description = "Sync Library from Mega",

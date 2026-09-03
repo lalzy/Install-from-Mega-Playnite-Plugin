@@ -48,9 +48,12 @@ namespace InstallFromMegaPlugin{
             process.Start();
             string error = process.StandardError.ReadToEnd();
             process.WaitForExit();
-            if(error != null){
+            if(!string.IsNullOrWhiteSpace(error)){
                 throw new Exception(error);
             }
+            // if(error != null){
+            //     throw new Exception(error);
+            // }
             else if(process.ExitCode != 0){
                 throw new Exception($"DOwnload failed with exit code: {process.ExitCode}");
             }

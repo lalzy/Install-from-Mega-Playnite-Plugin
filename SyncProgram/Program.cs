@@ -9,6 +9,7 @@ class Program{
     private const string TOOLPATH = "megatoolspath";
     private const string CONFIGFILEPATH = "configfilepath";
     private const string LASTSYNCFIELD = "syncfieldname";
+    private const string NEEDMIGRATENAME = "needmigratename";
 
     ///<summary>parse the arguments to get the values</summary>
     private static Dictionary<string, string> ParseArgs(string[] args){
@@ -30,6 +31,9 @@ class Program{
                     break;
                 case "--syncfieldname":
                     ret.Add(LASTSYNCFIELD, args[++i]);
+                    break;
+                case "--needmigratename":
+                    ret.Add(NEEDMIGRATENAME, args[++i]);
                     break;
             }
         }
@@ -59,17 +63,26 @@ class Program{
         return allValid;
     } 
 
-    ///<summary>Update the lastSync field in the config file of the playnite app to now</summary>
-    private static void UpdateSyncStampInPluginConfig(string configFile, string fieldName){
-        var lines = File.ReadAllLines(configFile).ToList();
+    ///<summary>Set the field of he config file to value</summary>
+    private static void SetField(ref List<string> lines, string fieldName, string value){
         var index = lines.FindIndex(l => l.StartsWith(fieldName));
-        string value = $"{fieldName}={DateTime.Now}";
+        string line = $"{fieldName}={value}";
         if(index >= 0)
-            lines[index] = value;
+            lines[index] = line;
         else
-            lines.Add(value);
+            lines.Add(line);
+    }
+    
+    ///<summary>Update the lastSync field in the config file of the playnite app to now</summary>
+    private static void UpdateSyncStampInPluginConfig(string configFile, string lastSyncField, string needMigrateField){
+        var lines = File.ReadAllLines(configFile).ToList();
+
+        SetField(ref lines, lastSyncField, DateTime.Now.ToString());
+        SetField(ref lines, needMigrateField, "true");
+        
         File.WriteAllLines(configFile, lines);
     }
+
 
     ///<summary>Starts Playnite</summary>
     static private void StartPlaynite(string playnitePath){
@@ -96,7 +109,7 @@ class Program{
                 Console.WriteLine("=== running sync; please wait =====");
             new Sync(paths[TOOLPATH], paths[MEGALIBURL], paths[PLAYNITEPATH]).RunSync();
             Console.WriteLine("======== finished fetching ========");
-            UpdateSyncStampInPluginConfig(paths[CONFIGFILEPATH], paths[LASTSYNCFIELD] != null ?  paths[LASTSYNCFIELD] : "lastSync");
+            UpdateSyncStampInPluginConfig(paths[CONFIGFILEPATH], paths[LASTSYNCFIELD] != null ?  paths[LASTSYNCFIELD] : "lastSync", paths[NEEDMIGRATENAME] != null ? paths[NEEDMIGRATENAME] : "needmigration");
 
             Console.WriteLine("Starting up Playnite");
             StartPlaynite(Path.Combine(paths[PLAYNITEPATH], "Playnite.DesktopApp.exe"));
