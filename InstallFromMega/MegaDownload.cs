@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using Playnite.SDK;
 using Playnite.SDK.Plugins;
+using System.IO.Compression;
 using System;
 
 namespace InstallFromMegaPlugin{
@@ -17,8 +18,19 @@ namespace InstallFromMegaPlugin{
             ErrorHandler.WithTryCatch(() => {
                 Directory.CreateDirectory(downloadPath);
                 action();
-                var zip = Directory.GetFiles(downloadPath)[0];
-                System.IO.Compression.ZipFile.ExtractToDirectory(zip, installPath);
+                var zip = Directory.GetFiles(downloadPath)[0]; 
+                using(var archive = System.IO.Compression.ZipFile.OpenRead(zip)){
+                    foreach(var entry in archive.Entries){
+                        var destination = Path.Combine(installPath, entry.FullName);
+                        if(string.IsNullOrEmpty(entry.Name)){
+                            Directory.CreateDirectory(destination);
+                            continue;
+                        }
+                        Directory.CreateDirectory(Path.GetDirectoryName(destination));
+                        entry.ExtractToFile(destination, true); 
+                    }
+                }
+                // System.IO.Compression.ZipFile.ExtractToDirectory(zip, installPath);
             }, api, finallyBlock: () => {
                 if(Directory.Exists(downloadPath)) Directory.Delete(downloadPath, true);
             });

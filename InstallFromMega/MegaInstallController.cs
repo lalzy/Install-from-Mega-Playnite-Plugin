@@ -71,11 +71,15 @@ namespace InstallFromMegaPlugin{
             }
         }
 
+        public static string GetMegaLink(Game game){
+            return game.Links.FirstOrDefault(l => l.Name == "MEGA").Url;
+        }
+        
         // Hook overrides
         public override void Install(InstallActionArgs args){
             string installPath = _api.Dialogs.SelectFolder(_api.ExpandGameVariables(_game, _game.InstallDirectory));
             Directory.CreateDirectory(installPath);
-            _mega.Download(_api, _game.Links.FirstOrDefault(l => l.Name == "MEGA").Url, installPath, _game.Name);
+            _mega.Download(_api, GetMegaLink(_game), installPath, _game.Name);
             UpdateStats(installPath, _stats);
             _api.Database.Games.Update(_game);
             SetSharedInstall(_game, installPath);

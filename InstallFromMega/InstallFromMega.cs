@@ -9,6 +9,8 @@ using System.Windows;
 using System.Reflection;
 using System.Diagnostics;
 using Playnite.SDK.Models;
+using System.Linq;
+
 
 namespace InstallFromMegaPlugin{
     public class InstallFromMega : GenericPlugin{
@@ -65,6 +67,12 @@ namespace InstallFromMegaPlugin{
             // need to shutdown as playnite holds access-rights to database files
             ShutdownPlaynite();
         }
+
+        ///<summary>Wrapper that handle the game.db->plugin.db portion of our migration to handle playtime etc</summary>
+        private void RunSyncSteps(string playnitePath, string configFilePath){
+            // Add syncing of user-based data
+            RunSyncProgram(playnitePath, configFilePath);
+        }
         
         ///<summary>Syncs if we need to sync</summary>
         private void HandleSync(string pluginPath, string configFilePath){
@@ -72,7 +80,7 @@ namespace InstallFromMegaPlugin{
                 if(NeedSyncP()){
                     var result = _api.Dialogs.ShowMessage("Sync available, want to sync(Playnite will be shutdown while it syncs the library)?", "Title", MessageBoxButton.YesNo);
                     if(result == MessageBoxResult.Yes){
-                        RunSyncProgram(pluginPath, configFilePath);
+                        RunSyncSteps(pluginPath, configFilePath);
                         
                     }
                 }
@@ -87,13 +95,14 @@ namespace InstallFromMegaPlugin{
                 var message = "Done!";
                 message += HASDEPENDENCIES ? $"\n{DEPENDENCYMESSAGE}" : "";
                 _api.Dialogs.ShowMessage(message);
-            }
-            HandleSync(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath());
+            }else{
+                HandleSync(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath());
 
-            bool.TryParse(Config.Read(Config.NEEDMIGRATE), out bool needMigrate);
-            if(needMigrate){
-                _gameStatsManager.SyncGamesToGameStats();
-                Config.Write(Config.NEEDMIGRATE, "false");
+                bool.TryParse(Config.Read(Config.NEEDMIGRATE), out bool needMigrate);
+                if(needMigrate){
+                    _gameStatsManager.SyncGamesToGameStats();
+                    Config.Write(Config.NEEDMIGRATE, "false");
+                }
             }
             // To track if a game gets uninstalled
             PlayniteApi.Database.Games.ItemUpdated += Games_ItemUpdated;
@@ -120,12 +129,67 @@ namespace InstallFromMegaPlugin{
         }
 
         
+        ///<summary>Chekc if the game has update text markign it for needing to be updated</sumamry>
+        ///<param name=game>Playnite Game object</param>
+        ///<returns>True if game has updated text</returns>
+        private static bool NeedsUpdate(Game game){
+            return game.Name.StartsWith(GameStatsManager.UPDATETEXT);
+        }
+        
+
+        private void RemoveUpdateString(Game game){
+            string name = game.Name;
+            game.Name = name.Substring((name.IndexOf(GameStatsManager.UPDATETEXT) + 1) + (GameStatsManager.UPDATETEXT.Length -1));
+            _api.Database.Games.Update(game);
+        }
+        
         public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args){
             yield return new MainMenuItem{
                 Description = "Sync Library from Mega",
                 MenuSection = "@",
-                Action = (a) => RunSyncProgram(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath())
+                Action = (a) => RunSyncSteps(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath())
             };
+        }
+
+        public override IEnumerable<GameMenuItem> GetGameMenuItems(GetGameMenuItemsArgs args){
+            Game game = args.Games[0];
+            GameStats stats = _gameStatsManager.Read(game.Id);
+
+
+            if(NeedsUpdate(game)){
+                var megaDownload = new MegaDownload(_api);
+                
+                yield return new GameMenuItem{
+                    Description = "Update/Redownload",
+                    Action = (actionArgs) =>
+                    {
+                        // megaDownload.Download(_api, MegaInstallController.GetMegaLink(game), game.InstallDirectory, game.Name);
+                        
+                        // Update local tracked version
+                        stats.Version = game.Version;
+                        _gameStatsManager.Write(stats);
+                        
+                        RemoveUpdateString(game);
+                    }
+                };
+            }
+
+
+    yield return new GameMenuItem{
+        Description = "Set version to 0.0.0",
+        Action = (actionArgs) =>
+        {
+            stats = _gameStatsManager.Read(game.Id);
+            if(stats == null) return;
+            stats.Version = "0.0.0";
+            _gameStatsManager.Write(stats);
+            game.Version = "0.0.0";
+            _api.Database.Games.Update(game);
+        }
+    };
+
+
+            
         }
     }
 }

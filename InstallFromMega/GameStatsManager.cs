@@ -17,6 +17,7 @@ namespace InstallFromMegaPlugin
     {
         private IPlayniteAPI _api;
         private string _connection;
+        public const string UPDATETEXT = "[UPDATE]";
         private static readonly System.Reflection.PropertyInfo[] _properties = typeof(GameStats).GetProperties();
 
         public GameStatsManager(Plugin plugin, IPlayniteAPI api)
@@ -30,7 +31,7 @@ namespace InstallFromMegaPlugin
                 SetupColums(command);
             }, "Error initializing GameStatsManager");
         }
-        
+
         private void WithSQLiteCommand(Action<SQLiteCommand> action, string commandText=null, string error=null){
             ErrorHandler.WithTryCatch(() => {
                 using(var connection = new SQLiteConnection(_connection)){
@@ -143,7 +144,7 @@ namespace InstallFromMegaPlugin
         }
         
         private void UpdatePlayniteObject(Playnite.SDK.Models.Game game, GameStats stats){
-            if(stats == null)  stats = Write(new GameStats { GameID = game.Id, IsInstalled = false, Playtime = 0 });
+            if(stats == null)  stats = Write(new GameStats { GameID = game.Id, IsInstalled = false, Playtime = 0, Version = game.Version });
             
             game.IsInstalled = stats.IsInstalled;
             game.Playtime = stats.Playtime;
@@ -154,8 +155,12 @@ namespace InstallFromMegaPlugin
             }else{
                 game.InstallDirectory = null;
             }
+
+            if(game.IsInstalled && game.Version != null){
+                if(stats.Version == null || stats.Version != game.Version) game.Name = UPDATETEXT + game.Name;
+                
+            }
             
-            game.Version = stats.Version;
             _api.Database.Games.Update(game);
         }
 
