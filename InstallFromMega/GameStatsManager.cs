@@ -142,6 +142,20 @@ namespace InstallFromMegaPlugin
             }
             return result;
         }
+
+        ///<summary>Update plugin's DB to game's entry</summary>
+        ///<param name="stats">Local stats entry</param>
+        ///<param name="game">Playnite game entry</param>
+        public void UpdateGameObject(GameStats stats, Game game){
+            if(stats == null) UpdatePlayniteObject(game, stats);
+            else{
+                stats.Playtime = game.Playtime;
+                stats.IsInstalled = game.IsInstalled;
+                stats.InstallDirectory = game.InstallDirectory;
+                Write(stats);
+            }
+            
+        }
         
         private void UpdatePlayniteObject(Playnite.SDK.Models.Game game, GameStats stats){
             if(stats == null)  stats = Write(new GameStats { GameID = game.Id, IsInstalled = false, Playtime = 0, Version = game.Version });
@@ -228,6 +242,8 @@ namespace InstallFromMegaPlugin
             }, "error Checking If Empty");
         }
 
+       
+        
         /// <summary>Sync the playnite Games.db entries to our playtime entry</summary>
         /// <throws> Generic pass-down exception</throws>
         public void SyncGamesToGameStats(){

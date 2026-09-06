@@ -70,7 +70,10 @@ namespace InstallFromMegaPlugin{
 
         ///<summary>Wrapper that handle the game.db->plugin.db portion of our migration to handle playtime etc</summary>
         private void RunSyncSteps(string playnitePath, string configFilePath){
-            // Add syncing of user-based data
+            foreach(var game in _api.Database.Games){
+                var stats = _gameStatsManager.Read(game.Id);
+                _gameStatsManager.UpdateGameObject(stats, game);
+            }
             RunSyncProgram(playnitePath, configFilePath);
         }
         
@@ -81,7 +84,6 @@ namespace InstallFromMegaPlugin{
                     var result = _api.Dialogs.ShowMessage("Sync available, want to sync(Playnite will be shutdown while it syncs the library)?", "Title", MessageBoxButton.YesNo);
                     if(result == MessageBoxResult.Yes){
                         RunSyncSteps(pluginPath, configFilePath);
-                        
                     }
                 }
             }, _api, "Error in Syncing");
@@ -163,7 +165,7 @@ namespace InstallFromMegaPlugin{
                     Description = "Update/Redownload",
                     Action = (actionArgs) =>
                     {
-                        // megaDownload.Download(_api, MegaInstallController.GetMegaLink(game), game.InstallDirectory, game.Name);
+                        megaDownload.Download(_api, MegaInstallController.GetMegaLink(game), game.InstallDirectory, game.Name);
                         
                         // Update local tracked version
                         stats.Version = game.Version;
@@ -173,23 +175,6 @@ namespace InstallFromMegaPlugin{
                     }
                 };
             }
-
-
-    yield return new GameMenuItem{
-        Description = "Set version to 0.0.0",
-        Action = (actionArgs) =>
-        {
-            stats = _gameStatsManager.Read(game.Id);
-            if(stats == null) return;
-            stats.Version = "0.0.0";
-            _gameStatsManager.Write(stats);
-            game.Version = "0.0.0";
-            _api.Database.Games.Update(game);
-        }
-    };
-
-
-            
         }
     }
 }
