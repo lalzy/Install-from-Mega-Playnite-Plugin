@@ -78,9 +78,12 @@ namespace InstallFromMegaPlugin{
         // Hook overrides
         public override void Install(InstallActionArgs args){
             string installPath = _api.Dialogs.SelectFolder(_api.ExpandGameVariables(_game, _game.InstallDirectory));
-            Directory.CreateDirectory(installPath);
-            _mega.Download(_api, GetMegaLink(_game), installPath, _game.Name);
-            UpdateStats(installPath, _stats);
+            if(Directory.Exists(installPath) && Directory.EnumerateFileSystemEntries(installPath).Any()){
+                var result = _api.Dialogs.ShowMessage("Directory not empty, skipping download/extraction. If not correct game edit->untick installed, and reinstall to empty directory");
+            }else{
+                Directory.CreateDirectory(installPath);
+                _mega.Download(_api, GetMegaLink(_game), installPath, _game.Name);
+            }
             _api.Database.Games.Update(_game);
             SetSharedInstall(_game, installPath);
             InvokeOnInstalled(new GameInstalledEventArgs(new GameInstallationData{

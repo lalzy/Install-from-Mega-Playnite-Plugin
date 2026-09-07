@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Diagnostics;
 using Playnite.SDK.Models;
 using System.Linq;
+using System.Threading;
 
 
 namespace InstallFromMegaPlugin{
@@ -23,6 +24,8 @@ namespace InstallFromMegaPlugin{
         private GameStatsManager _gameStatsManager;
         private IPlayniteAPI _api;
         public MegaDownload _megaDownload;
+        private Timer _timer;
+        private bool _askedForSync = false;
 
         public InstallFromMega(IPlayniteAPI api) : base(api){
             _api = api;
@@ -80,13 +83,33 @@ namespace InstallFromMegaPlugin{
         ///<summary>Syncs if we need to sync</summary>
         private void HandleSync(string pluginPath, string configFilePath){
             ErrorHandler.WithTryCatch(()=>{
-                if(NeedSyncP()){
+                var syncType = Config.GetSyncType();
+                if(NeedSyncP() && syncType == Config.SyncType.OnStart || syncType == Config.SyncType.Periodic){
                     var result = _api.Dialogs.ShowMessage("Sync available, want to sync(Playnite will be shutdown while it syncs the library)?", "Title", MessageBoxButton.YesNo);
                     if(result == MessageBoxResult.Yes){
                         RunSyncSteps(pluginPath, configFilePath);
+                        _askedForSync = false;
+                    }else{
+                        _askedForSync = true;
                     }
                 }
             }, _api, "Error in Syncing");
+        }
+        
+        private void SyncChecking(Object state){
+            Thread thread = new Thread(() => {
+                if(!_askedForSync && NeedSyncP()){
+                    _askedForSync = true;
+                    HandleSync(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Config.GetFullPath());
+                }
+            });
+
+            thread.IsBackground = true;
+            thread.Start();
+        }
+
+        public override void OnApplicationStopped(OnApplicationStoppedEventArgs args){
+            _timer?.Dispose();
         }
         
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args){
@@ -106,11 +129,17 @@ namespace InstallFromMegaPlugin{
                     Config.Write(Config.NEEDMIGRATE, "false");
                 }
             }
+
+            if(Config.GetSyncType() == Config.SyncType.Periodic){
+                int TimeToCheck = (int)TimeSpan.FromHours(168).TotalMilliseconds;
+                _timer = new Timer(SyncChecking, null, TimeToCheck, TimeToCheck); // First check at Time to check, instead of immediate
+            }
+            
             // To track if a game gets uninstalled
             PlayniteApi.Database.Games.ItemUpdated += Games_ItemUpdated;
     
         }
-        
+
         public override IEnumerable<InstallController> GetInstallActions(GetInstallActionsArgs args){
             yield return new MegaInstallController(args.Game, PlayniteApi, _gameStatsManager);
         }
@@ -153,15 +182,12 @@ namespace InstallFromMegaPlugin{
             };
         }
 
-        public override IEnumerable<GameMenuItem> GetGameMenuItems(GetGameMenuItemsArgs args){
-            Game game = args.Games[0];
-            GameStats stats = _gameStatsManager.Read(game.Id);
-
-
+        ///<summary>Create an Update context-menu entry if game needs an update</summary>
+        private GameMenuItem AddUpdateEntry(Game game, GameStats stats){
             if(NeedsUpdate(game)){
                 var megaDownload = new MegaDownload(_api);
-                
-                yield return new GameMenuItem{
+
+                return new GameMenuItem{
                     Description = "Update/Redownload",
                     Action = (actionArgs) =>
                     {
@@ -175,6 +201,37 @@ namespace InstallFromMegaPlugin{
                     }
                 };
             }
+            return null;
+        }
+
+        ///<summary>Create an uninstall entry if the game is installed</summary>
+        private GameMenuItem AddUninstallEntry(Game game){
+            if(game.IsInstalled){
+                return new GameMenuItem{
+                    Description = "uninstall",
+                    Action = (actionArgs) => {
+                        var result = _api.Dialogs.ShowMessage($"Do you want to uninstall {game.Name}?", $"Uninstalling {game.Name}", MessageBoxButton.YesNo);
+
+                        if(result == MessageBoxResult.Yes){
+                            if(Directory.Exists(game.InstallDirectory))
+                                Directory.Delete(game.InstallDirectory, recursive: true);
+
+                            game.IsInstalled = false;
+                            _api.Database.Games.Update(game);
+                        }
+                    }
+                };
+            }
+            return null;
+        }
+        
+        public override IEnumerable<GameMenuItem> GetGameMenuItems(GetGameMenuItemsArgs args){
+            Game game = args.Games[0];
+            GameStats stats = _gameStatsManager.Read(game.Id);
+            var updateEntry = AddUpdateEntry(game, stats);
+            var uninstallEntry = AddUninstallEntry(game);
+            if(updateEntry != null) yield return updateEntry;
+            if(uninstallEntry != null) yield return AddUninstallEntry(game);
         }
     }
 }

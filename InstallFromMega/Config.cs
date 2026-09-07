@@ -2,10 +2,17 @@ using System.Linq;
 using System.IO;
 using System;
 using Playnite.SDK;
+using System.Collections.Generic;
 
 namespace InstallFromMegaPlugin{
     public static class Config{
+        public enum SyncType {
+            OnStart,
+            Periodic,
+            Manual
+        }
         public static string _configPath = "config.ini";
+        public const string SYNCTYPE = "syncType";
         public const string LASTSYNC = "lastSync"; // When the extension was last synced for the mega.nz library. If out of sync, a reminder will be thrown.
         public const string MEGATOOLS = "megaToolspath"; // Where the local MegaTools is setup
         public const string MEGALASTUPDATEURL = "lastupdatedurl"; // Link to where the last-sync file is. Need to contain a dateTime timestamp
@@ -28,7 +35,7 @@ namespace InstallFromMegaPlugin{
         public static void CreateBlankConfigFile(IPlayniteAPI api){
             if(!File.Exists(_configPath)){
                 var configContent = new System.Text.StringBuilder();
-                string[] keys = { MEGATOOLS, LASTSYNC, DOWNLOADPATH, MEGALASTUPDATEURL, MEGALASTUPDATEURL, LIBRARYPATH, SHAREDPLATFORMS, NEEDMIGRATE};
+                string[] keys = { MEGATOOLS, LASTSYNC, DOWNLOADPATH, MEGALASTUPDATEURL, MEGALASTUPDATEURL, LIBRARYPATH, SHAREDPLATFORMS, NEEDMIGRATE, SYNCTYPE};
 
                 foreach(var key in keys){
                     string value = "";
@@ -38,7 +45,15 @@ namespace InstallFromMegaPlugin{
                         value = "";
                     else if (key == NEEDMIGRATE)
                         value = "false";
-                    else{
+                    else if (key == SYNCTYPE) {
+                        do
+                        {
+                            var options = Enum.GetNames(typeof(SyncType));
+                            value = api.Dialogs.SelectString($"Enter: one of: {options}", "SyncType", "").SelectedString;
+                        } while (!Enum.TryParse<SyncType>(value, true, out _));
+
+                    }else{
+                        
                         value = api.Dialogs.SelectString($"Enter: {key} value", "Input", "").SelectedString;
                     }
                     configContent.Append(key).Append('=').Append(value).Append("\n");
@@ -46,11 +61,20 @@ namespace InstallFromMegaPlugin{
                 File.WriteAllText(_configPath, configContent.ToString());
             };
         }
+
+        public static SyncType GetSyncType(){
+            return (SyncType)Enum.Parse(typeof(SyncType), Read(SYNCTYPE), true);
+        }
         
         ///<summary>Read an config entry</summary>
         public static string Read(string field){
-            var config = File.ReadAllLines(_configPath).Select(l => l.Split('=')).ToDictionary(a => a[0], a => a[1]);
-            return config[field];
+            foreach(var line in File.ReadAllLines(_configPath)){
+                if(line.TrimStart().StartsWith("#")) continue;
+                if(!line.Contains('=')) continue;
+                var parts = line.Split('=');
+                if(parts[0].Trim() == field) return parts[1].Trim();
+            }
+            return null;
         }
 
         ///<summary>Write new value to the config file</summary>
